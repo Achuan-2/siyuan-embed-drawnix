@@ -404,7 +404,7 @@ export default class DrawnixPlugin extends Plugin {
     return `data:image/svg+xml;base64,${base64}`;
   }
 
-  public newDrawnixImage(blockID: string, callback?: (imageInfo: DrawnixImageInfo) => void) {
+  public async newDrawnixImage(blockID: string, callback?: (imageInfo: DrawnixImageInfo) => void) {
     const format = this.data[STORAGE_NAME].embedImageFormat;
     const imageName = `drawnix-image-${window.Lute.NewNodeID()}.${format}`;
     const placeholderImageContent = this.getPlaceholderImageContent(format);
@@ -414,9 +414,9 @@ export default class DrawnixPlugin extends Plugin {
     formData.append('path', `data/assets/${imageName}`);
     formData.append('file', file);
     formData.append('isDir', 'false');
-    fetchPost('/api/file/putFile', formData, () => {
+    await fetchSyncPost('/api/file/putFile', formData);
       const imageURL = `assets/${imageName}`;
-      fetchPost('/api/block/updateBlock', {
+      await fetchSyncPost('/api/block/updateBlock', {
         id: blockID,
         data: `![](${imageURL})`,
         dataType: "markdown",
@@ -459,7 +459,7 @@ export default class DrawnixPlugin extends Plugin {
       };
       // 将初始的 drawnix 数据写入块属性，参考 mindmap 插件的实现方式
       try {
-        fetchPost('/api/attr/setBlockAttrs', { id: blockID, attrs: { 'custom-drawnix': JSON.stringify(defaultDrawnixData) } }, () => { });
+        await fetchSyncPost('/api/attr/setBlockAttrs', { id: blockID, attrs: { 'custom-drawnix': JSON.stringify(defaultDrawnixData) } });
       } catch (err) { }
 
       const imageInfo: DrawnixImageInfo = {
@@ -472,7 +472,6 @@ export default class DrawnixPlugin extends Plugin {
       if (callback) {
         callback(imageInfo);
       }
-    });
   }
 
   public async getDrawnixImage(imageURL: string, reload: boolean): Promise<string> {
@@ -492,7 +491,7 @@ export default class DrawnixPlugin extends Plugin {
 
 
 
-  public updateDrawnixImage(imageInfo: DrawnixImageInfo, callback?: (response: IWebSocketData) => void) {
+  public async updateDrawnixImage(imageInfo: DrawnixImageInfo, callback?: (response: IWebSocketData) => void) {
     if (!imageInfo.data) {
       imageInfo.data = this.getPlaceholderImageContent(imageInfo.format);
     }
@@ -503,20 +502,19 @@ export default class DrawnixPlugin extends Plugin {
     formData.append("path", 'data/' + imageInfo.imageURL);
     formData.append("file", file);
     formData.append("isDir", "false");
-    fetchPost("/api/file/putFile", formData, async (response) => {
+    const response = await fetchSyncPost("/api/file/putFile", formData);
       // Save drawnix data to block attributes
       if (imageInfo.drawnixData) {
         try {
           const parsedData = JSON.parse(imageInfo.drawnixData);
           if (parsedData.children && parsedData.children.length > 0) {
-            fetchPost('/api/attr/setBlockAttrs', { id: imageInfo.blockID, attrs: { 'custom-drawnix': imageInfo.drawnixData } }, () => { });
+            await fetchSyncPost('/api/attr/setBlockAttrs', { id: imageInfo.blockID, attrs: { 'custom-drawnix': imageInfo.drawnixData } });
           }
         } catch (e) {
           console.error("Failed to parse drawnix data", e);
         }
       }
-      if (callback) callback(response);
-    });
+    if (callback) callback(response);
   }
 
   public updateAttrLabel(imageInfo: DrawnixImageInfo, blockElement: HTMLElement) {
@@ -581,7 +579,6 @@ export default class DrawnixPlugin extends Plugin {
     const editBtn = imgContainer.querySelector('.cst-edit-drawnix');
     editBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      e.preventDefault();
 
       const imgElement = imgContainer.querySelector('img') as HTMLImageElement;
       const imageURL = imgElement?.getAttribute("data-src") || imgElement?.getAttribute("src");

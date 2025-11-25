@@ -9,5 +9,3 @@ dist
 build
 tmp
 .env
-draw.war
-draw
