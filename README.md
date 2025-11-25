@@ -1,3 +1,4 @@
 打包
 
-npm run prepare:drawnix
+pnpm run prepare:drawnix
+pnpm build

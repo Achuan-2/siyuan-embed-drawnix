@@ -81,6 +81,8 @@ export default class DrawnixPlugin extends Plugin {
   private _mutationObserver;
   private _openMenuImageHandler;
   private _globalKeyDownHandler;
+  private _mouseOverHandler;
+  private isMouseOverProcessing = false;
 
   private settingItems: SettingItem[];
   public EDIT_TAB_TYPE = "drawnix-edit-tab";
@@ -124,6 +126,9 @@ export default class DrawnixPlugin extends Plugin {
     this._globalKeyDownHandler = this.globalKeyDownHandler.bind(this);
     document.documentElement.addEventListener("keydown", this._globalKeyDownHandler);
 
+    this._mouseOverHandler = this.mouseOverHandler.bind(this);
+    document.addEventListener("mouseover", this._mouseOverHandler);
+
     this.reloadAllEditor();
   }
 
@@ -131,6 +136,7 @@ export default class DrawnixPlugin extends Plugin {
     if (this._mutationObserver) this._mutationObserver.disconnect();
     if (this._openMenuImageHandler) this.eventBus.off("open-menu-image", this._openMenuImageHandler);
     if (this._globalKeyDownHandler) document.documentElement.removeEventListener("keydown", this._globalKeyDownHandler);
+    if (this._mouseOverHandler) document.removeEventListener("mouseover", this._mouseOverHandler);
     this.reloadAllEditor();
     this.removeAllDrawnixTab();
   }
@@ -484,18 +490,13 @@ export default class DrawnixPlugin extends Plugin {
     return result?.data || null;
   }
 
-  // Set custom attribute for an image
-  private async setBlockAttr(blockId: string, attrName: string, attrValue: string): Promise<void> {
-    await fetchSyncPost('/api/attr/setBlockAttrs', {
-      id: blockId,
-      attrs: { [attrName]: attrValue }
-    });
-  }
+
 
   public updateDrawnixImage(imageInfo: DrawnixImageInfo, callback?: (response: IWebSocketData) => void) {
     if (!imageInfo.data) {
       imageInfo.data = this.getPlaceholderImageContent(imageInfo.format);
     }
+
     const blob = dataURLToBlob(imageInfo.data);
     const file = new File([blob], imageInfo.imageURL.split('/').pop(), { type: blob.type });
     const formData = new FormData();
@@ -505,7 +506,14 @@ export default class DrawnixPlugin extends Plugin {
     fetchPost("/api/file/putFile", formData, async (response) => {
       // Save drawnix data to block attributes
       if (imageInfo.drawnixData) {
-        await this.setBlockAttr(imageInfo.blockID, 'custom-drawnix', imageInfo.drawnixData);
+        try {
+          const parsedData = JSON.parse(imageInfo.drawnixData);
+          if (parsedData.children && parsedData.children.length > 0) {
+            fetchPost('/api/attr/setBlockAttrs', { id: imageInfo.blockID, attrs: { 'custom-drawnix': imageInfo.drawnixData } }, () => { });
+          }
+        } catch (e) {
+          console.error("Failed to parse drawnix data", e);
+        }
       }
       if (callback) callback(response);
     });
@@ -532,6 +540,64 @@ export default class DrawnixPlugin extends Plugin {
         attrElement.prepend(labelElement);
       }
     }
+  }
+
+  private mouseOverHandler(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    const imgContainer = target.closest('[data-type="img"]');
+    if (!imgContainer || this.isMouseOverProcessing) return;
+
+    this.isMouseOverProcessing = true;
+    setTimeout(() => this.isMouseOverProcessing = false, 100);
+
+    if (imgContainer.querySelector('.cst-edit-drawnix')) return;
+
+    const blockElement = imgContainer.closest('[data-node-id]') as HTMLElement;
+    if (!blockElement) return;
+
+    // Check if it is a drawnix block
+    if (!blockElement.getAttribute("custom-drawnix")) return;
+
+    const action = imgContainer.querySelector('.protyle-action');
+    if (!action) return;
+
+    // Adjust original icon style
+    const actionIcon = action.querySelector('.protyle-icon') as HTMLElement;
+    if (actionIcon) {
+      actionIcon.style.borderTopLeftRadius = '0';
+      actionIcon.style.borderBottomLeftRadius = '0';
+    }
+
+    // Insert "Edit" button
+    const editBtnHtml = `
+            <span class="protyle-icon protyle-icon--only protyle-custom cst-edit-drawnix" 
+                  aria-label="${this.i18n.edit || 'Edit Drawnix'}"
+                  style="border-top-right-radius:0;border-bottom-right-radius:0;cursor:pointer;">
+                <svg class="svg"><use xlink:href="#iconEdit"></use></svg>
+            </span>`;
+    action.insertAdjacentHTML('afterbegin', editBtnHtml);
+
+    // Bind click event
+    const editBtn = imgContainer.querySelector('.cst-edit-drawnix');
+    editBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      const imgElement = imgContainer.querySelector('img') as HTMLImageElement;
+      const imageURL = imgElement?.getAttribute("data-src") || imgElement?.getAttribute("src");
+
+      if (imageURL) {
+        this.getDrawnixImageInfo(imageURL, blockElement).then((imageInfo) => {
+          if (imageInfo) {
+            if (!this.isMobile && this.data[STORAGE_NAME].editWindow === 'tab') {
+              this.openEditTab(imageInfo);
+            } else {
+              this.openEditDialog(imageInfo);
+            }
+          }
+        });
+      }
+    });
   }
 
   private openMenuImageHandler({ detail }) {

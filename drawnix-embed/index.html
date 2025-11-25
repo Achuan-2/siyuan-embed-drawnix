@@ -48,12 +48,28 @@
             }
         });
 
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), wait);
+            };
+        }
+
+        const autoSave = debounce((data) => {
+             window.parent.postMessage({
+                type: 'save',
+                data: data
+            }, '*');
+        }, 2000);
+
         function initialize(data) {
              isInitialized = true;
              window.initDrawnix(document.getElementById('root'), data, 
              (newValue) => {
                  // onChange: triggered on every change
-                 // We could implement autosave here if needed
+                 autoSave(newValue);
              },
              (newValue) => {
                  // onSave: triggered by explicit save action (Ctrl+S or Menu)
