@@ -87,6 +87,25 @@ export default class DrawnixPlugin extends Plugin {
   private settingItems: SettingItem[];
   public EDIT_TAB_TYPE = "drawnix-edit-tab";
 
+  /**
+   * Push notification to SiYuan using the built-in API: /api/notification/pushMsg
+   * @param msg message content
+   * @param timeout display timeout in ms, default 7000
+   */
+  private async pushNotification(msg: string, timeout = 7000) {
+    try {
+      // Use the global fetch API to call SiYuan's endpoint
+      // This endpoint will show a small notification at the top/right of the editor
+      await fetch('/api/notification/pushMsg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ msg, timeout }),
+      });
+    } catch (err) {
+      console.error('Failed to push SiYuan notification', err);
+    }
+  }
+
   async onload() {
     this.initMetaInfo();
     this.initSetting();
@@ -714,6 +733,13 @@ export default class DrawnixPlugin extends Plugin {
             type: 'export',
             format: imageInfo.format
           });
+          // 给思源发送保存通知
+          try {
+            const msg = (window as any)?.siyuan?.languages?.allChangesSaved || '保存成功';
+            that.pushNotification(msg, 7000);
+          } catch (err) {
+            console.error('Failed to send save notification', err);
+          }
         }
 
         const onExport = (message: any) => {
@@ -906,6 +932,13 @@ export default class DrawnixPlugin extends Plugin {
         type: 'export',
         format: imageInfo.format,
       });
+      // 给思源发送保存通知（区分自动保存 / 手动保存）
+      try {
+        const msgKey = message?.type === 'autosave' ? '已自动保存' : ((window as any)?.siyuan?.languages?.allChangesSaved || '保存成功');
+        this.pushNotification(msgKey, 7000);
+      } catch (err) {
+        console.error('Failed to send save notification', err);
+      }
     }
 
     const onExport = (message: any) => {
