@@ -1,8 +1,8 @@
 {
-  "name": "siyuan-embed-drawnix",
+  "name": "siyuan-drawnix",
   "author": "Achuan-2",
-  "url": "https://github.com/Achuan-2/siyuan-embed-drawnix",
-  "version": "0.0.2",
+  "url": "https://github.com/Achuan-2/siyuan-drawnix",
+  "version": "0.0.3",
   "minAppVersion": "3.0.0",
   "disabledInPublish": true,
   "backends": [
@@ -12,12 +12,12 @@
     "all"
   ],
   "displayName": {
-    "default": "「Embed Series」draw.io",
-    "zh_CN": "「嵌入式系列」drawnix"
+    "default": "drawnix",
+    "zh_CN": "drawnix"
   },
   "description": {
-    "default": "「Embed Series」Create editable SVG/PNG Image with drawnix",
-    "zh_CN": "「嵌入式系列」使用drawnix创建可编辑的SVG/PNG图像"
+    "default": "Create editable SVG/PNG Image with drawnix",
+    "zh_CN": "使用drawnix创建可编辑的SVG/PNG图像"
   },
   "readme": {
     "default": "README.md",
