@@ -64,11 +64,11 @@
                 type: 'autosave',
                 data: data
             }, '*');
-            // 触发保存时间更新事件，传递自动保存标识
+            // 触发保存时间更新事件,传递自动保存标识
             window.dispatchEvent(new CustomEvent('drawnix-saved', {
                 detail: { isAutoSave: true }
             }));
-        }, 1000); // 1秒防抖延迟
+        }, 2000); // 2秒防抖延迟
 
         function initialize(data) {
              isInitialized = true;

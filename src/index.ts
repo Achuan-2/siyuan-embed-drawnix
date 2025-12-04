@@ -760,6 +760,7 @@ export default class DrawnixPlugin extends Plugin {
                 });
               });
             });
+            console.log('[Drawnix] Exported image:', imageInfo.imageURL);
           }
         }
 
