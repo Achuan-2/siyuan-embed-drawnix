@@ -117,7 +117,7 @@ export default class DrawnixPlugin extends Plugin {
       id: "drawnix",
       html: `<div class="b3-list-item__first"><svg class="b3-list-item__graphic"><use xlink:href="#iconImage"></use></svg><span class="b3-list-item__text">Drawnix</span></div>`,
       callback: (protyle, nodeElement) => {
-        this.newDrawnixImage(nodeElement.dataset.nodeId, (imageInfo) => {
+        this.newDrawnixImage(protyle, nodeElement.dataset.nodeId, (imageInfo) => {
           if (!this.isMobile && this.data[STORAGE_NAME].editWindow === 'tab') {
             this.openEditTab(imageInfo);
           } else {
@@ -224,7 +224,6 @@ export default class DrawnixPlugin extends Plugin {
       this.data[STORAGE_NAME].labelDisplay = (dialog.element.querySelector("[data-type='labelDisplay']") as HTMLSelectElement).value;
       this.data[STORAGE_NAME].embedImageFormat = (dialog.element.querySelector("[data-type='embedImageFormat']") as HTMLSelectElement).value;
       this.data[STORAGE_NAME].editWindow = (dialog.element.querySelector("[data-type='editWindow']") as HTMLSelectElement).value;
-      this.data[STORAGE_NAME].themeMode = (dialog.element.querySelector("[data-type='themeMode']") as HTMLSelectElement).value;
       this.saveData(STORAGE_NAME, this.data[STORAGE_NAME]);
       this.reloadAllEditor();
       this.removeAllDrawnixTab();
@@ -235,10 +234,9 @@ export default class DrawnixPlugin extends Plugin {
   private async initSetting() {
     await this.loadData(STORAGE_NAME);
     if (!this.data[STORAGE_NAME]) this.data[STORAGE_NAME] = {};
-    if (typeof this.data[STORAGE_NAME].labelDisplay === 'undefined') this.data[STORAGE_NAME].labelDisplay = "showLabelOnHover";
+    if (typeof this.data[STORAGE_NAME].labelDisplay === 'undefined') this.data[STORAGE_NAME].labelDisplay = "showLabelAlways";
     if (typeof this.data[STORAGE_NAME].embedImageFormat === 'undefined') this.data[STORAGE_NAME].embedImageFormat = "svg";
-    if (typeof this.data[STORAGE_NAME].editWindow === 'undefined') this.data[STORAGE_NAME].editWindow = 'dialog';
-    if (typeof this.data[STORAGE_NAME].themeMode === 'undefined') this.data[STORAGE_NAME].themeMode = "themeLight";
+    if (typeof this.data[STORAGE_NAME].editWindow === 'undefined') this.data[STORAGE_NAME].editWindow = 'tab';
 
     this.settingItems = [
       {
@@ -278,19 +276,6 @@ export default class DrawnixPlugin extends Plugin {
             return `<option value="${option}"${isSelected ? " selected" : ""}>${option}</option>`;
           }).join("");
           return HTMLToElement(`<select class="b3-select fn__flex-center" data-type="editWindow">${optionsHTML}</select>`);
-        },
-      },
-      {
-        title: this.i18n.themeMode,
-        direction: "column",
-        description: this.i18n.themeModeDescription,
-        createActionElement: () => {
-          const options = ["themeLight", "themeDark", "themeOS"];
-          const optionsHTML = options.map(option => {
-            const isSelected = String(option) === String(this.data[STORAGE_NAME].themeMode);
-            return `<option value="${option}"${isSelected ? " selected" : ""}>${window.siyuan.languages[option]}</option>`;
-          }).join("");
-          return HTMLToElement(`<select class="b3-select fn__flex-center" data-type="themeMode">${optionsHTML}</select>`);
         },
       },
     ];
@@ -399,7 +384,7 @@ export default class DrawnixPlugin extends Plugin {
     return `data:image/svg+xml;base64,${base64}`;
   }
 
-  public async newDrawnixImage(blockID: string, callback?: (imageInfo: DrawnixImageInfo) => void) {
+  public async newDrawnixImage(protyle: any, blockID: string, callback?: (imageInfo: DrawnixImageInfo) => void) {
     const format = this.data[STORAGE_NAME].embedImageFormat;
     const imageName = `drawnix-image-${window.Lute.NewNodeID()}.${format}`;
     const placeholderImageContent = this.getPlaceholderImageContent(format);
@@ -411,11 +396,7 @@ export default class DrawnixPlugin extends Plugin {
     formData.append('isDir', 'false');
     await fetchSyncPost('/api/file/putFile', formData);
       const imageURL = `assets/${imageName}`;
-      await fetchSyncPost('/api/block/updateBlock', {
-        id: blockID,
-        data: `![](${imageURL})`,
-        dataType: "markdown",
-      });
+      protyle.insert(`![](${imageURL})`);
       const defaultDrawnixData = {
         "type": "drawnix",
         "version": 1,
@@ -432,9 +413,11 @@ export default class DrawnixPlugin extends Plugin {
         }
       };
       // 将初始的 drawnix 数据写入块属性，参考 mindmap 插件的实现方式
-      try {
-        await fetchSyncPost('/api/attr/setBlockAttrs', { id: blockID, attrs: { 'custom-drawnix': JSON.stringify(defaultDrawnixData) } });
-      } catch (err) { }
+      if (blockID) {
+        try {
+          await fetchSyncPost('/api/attr/setBlockAttrs', { id: blockID, attrs: { 'custom-drawnix': JSON.stringify(defaultDrawnixData) } });
+        } catch (err) { }
+      }
 
       const imageInfo: DrawnixImageInfo = {
         blockID: blockID,
@@ -466,9 +449,12 @@ export default class DrawnixPlugin extends Plugin {
 
 
   public async updateDrawnixImage(imageInfo: DrawnixImageInfo, callback?: (response: IWebSocketData) => void) {
+    let imageData = imageInfo.data;
+    if (!imageData || imageData.trim() === '') {
+      imageData = this.getPlaceholderImageContent(imageInfo.format);
+    }
 
-
-    const blob = dataURLToBlob(imageInfo.data);
+    const blob = dataURLToBlob(imageData);
     const file = new File([blob], imageInfo.imageURL.split('/').pop(), { type: blob.type });
     const formData = new FormData();
     formData.append("path", 'data/' + imageInfo.imageURL);
@@ -1062,10 +1048,6 @@ export default class DrawnixPlugin extends Plugin {
         custom.tab?.close();
       }
     })
-  }
-
-  public isDarkMode(): boolean {
-    return this.data[STORAGE_NAME].themeMode === 'themeDark' || (this.data[STORAGE_NAME].themeMode === 'themeOS' && window.siyuan.config.appearance.mode === 1);
   }
 
   public fixImageContent(imageDataURL: string) {
