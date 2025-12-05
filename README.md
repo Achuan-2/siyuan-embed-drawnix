@@ -23,7 +23,7 @@ pnpm build
 
 ## ❤️致谢
 
-- [drawnix](https://github.com/plait-board/drawnix)
+- 画布基于[Drawnix](https://github.com/plait-board/drawnix)开源项目进行二次开发
 - 参考了[YuxinZhaozyx](https://github.com/YuxinZhaozyx/siyuan-embed-excalidraw)嵌入式系列插件的设计
 
 ## ❤️用爱发电
