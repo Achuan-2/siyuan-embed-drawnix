@@ -848,6 +848,32 @@ export default class DrawnixPlugin extends Plugin {
       },
     });
 
+    // 在对话框右上角添加“在标签页打开”按钮
+    const headerElement = dialog.element.querySelector('.edit-dialog-header') as HTMLElement;
+    let openTabAfterSave = false;
+    if (headerElement) {
+      const openInTabBtn = document.createElement('button');
+      openInTabBtn.className = 'b3-button b3-button--text open-in-tab-btn';
+      openInTabBtn.type = 'button';
+      openInTabBtn.style.margin = '6px';
+      openInTabBtn.textContent = '在标签页打开';
+      headerElement.appendChild(openInTabBtn);
+
+      openInTabBtn.addEventListener('click', () => {
+        // 标记为在保存完成后打开标签页，并请求 iframe 保存（iframe 会回发 save 和 export）
+        openTabAfterSave = true;
+        openInTabBtn.disabled = true;
+        openInTabBtn.textContent = '正在打开...';
+        try {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage(JSON.stringify({ type: 'save' }), '*');
+          }
+        } catch (err) {
+          console.error('请求 iframe 保存失败', err);
+        }
+      });
+    }
+
     const iframe = dialog.element.querySelector("iframe");
     iframe.focus();
 
@@ -991,6 +1017,24 @@ export default class DrawnixPlugin extends Plugin {
                 this.updateAttrLabel(imageInfo, blockElement);
               }
             });
+            // 如果是通过“在标签页打开”触发，则在保存并更新图片后打开标签页并关闭对话框
+            try {
+              if (openTabAfterSave) {
+                openTab({
+                  app: this.app,
+                  custom: {
+                    id: this.name + this.EDIT_TAB_TYPE,
+                    icon: "iconEdit",
+                    title: `${imageInfo.imageURL.split('/').pop()}`,
+                    data: imageInfo,
+                  }
+                });
+                openTabAfterSave = false;
+                dialog.destroy();
+              }
+            } catch (err) {
+              console.error('打开标签页失败', err);
+            }
           });
         });
       }

@@ -7,9 +7,33 @@
 
     .edit-dialog-header {
         display: block;
-        height: 24px;
+        height: 32px;
         flex-shrink: 0;
         cursor: grab;
+        position: relative; // 作为绝对定位按钮的参照
+    }
+
+    // 对话框右上角“在标签页打开”按钮
+    .open-in-tab-btn {
+        position: absolute;
+        right: 8px;
+        top: 6px;
+        height: 20px;
+        padding: 0 8px;
+        line-height: 20px;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        color: var(--b3-fg);
+    }
+
+    .open-in-tab-btn[disabled] {
+        opacity: 0.6;
+        cursor: default;
     }
 
     .edit-dialog-container {
