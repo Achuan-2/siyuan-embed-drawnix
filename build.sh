@@ -1,2 +1,2 @@
-pnpm run prepare:drawnix
+npm run prepare:drawnix
 pnpm build

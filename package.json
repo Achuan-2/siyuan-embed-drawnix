@@ -9,7 +9,7 @@
   "repository": "",
   "scripts": {
     "dev": "vite build --watch",
-    "prepare:drawnix": "cd drawnix && pnpm install && pnpm run build:web && cd ..  && cp -r drawnix/dist/apps/web/assets/* drawnix-embed/assets/",
+    "prepare:drawnix": "cd drawnix && npm install && npm run build:web && cd ..  && cp -r drawnix/dist/apps/web/assets/* drawnix-embed/assets/",
     "release": "node ./release.js",
     "release:manual": "node ./release.js --mode=manual",
     "release:patch": "node ./release.js --mode=patch",
